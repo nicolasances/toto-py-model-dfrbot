@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime as dt
 import uuid
+import joblib
 
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import LabelEncoder
@@ -119,6 +120,60 @@ class FeatureEngineering:
 
         return [[time_cluster, staying_home]]
 
+    def do_for_scoring(self, folder, raw_data_filename, context, model): 
+        """
+        Feature engineering to support the scoring process
+        """        
+        logger.compute(context.correlation_id, '[ {context} ] - [ FEATURE ENGINEERING ] - Starting feature engineering'.format(context=context.process), 'info')
+
+        # Load relevant model files
+        time_cluster_model = joblib.load(model.files['time-cluster-model'])
+        id_encoder = joblib.load(model.files['id-encoder'])
+
+        # Load the data
+        raw_data_df = pd.read_csv(raw_data_filename, index_col=0)
+
+        # Classify the time in the predefined (trained) time clusters
+        scoring_data = pd.concat([raw_data_df, self.__cl_feature_engineering(raw_data_df).rename(columns={'time': 'normalized_time'})], axis=1)
+        scoring_data['time_cluster'] = time_cluster_model.predict(scoring_data['normalized_time'].to_numpy().reshape(-1,1))
+
+        # IMPORTANT!
+        # Remove the aliments that have not been encoded in the training process
+        scoring_data = scoring_data[scoring_data['id'].isin(id_encoder.classes_)]
+
+        # Determine the staying home feature
+        scoring_data['staying_home'] = self.__staying_home(scoring_data)
+        
+        # Encode IDs
+        scoring_data['encoded_id'] = id_encoder.transform(scoring_data['id'])
+
+        # Drop some columns
+        scoring_data.drop(columns=['date'], inplace=True)
+        
+        # Create the dummy 
+        scoring_data = pd.concat([scoring_data, pd.get_dummies(scoring_data['encoded_id'])], axis=1)
+        scoring_data.drop(columns=['encoded_id'], inplace=True)
+
+        # Group by time, staying home and cluster
+        gb = scoring_data.groupby(by=['time', 'staying_home', 'time_cluster'])
+
+        # Sum all the remaining columns: the dummies of the ids! 
+        features_flat = gb.sum()
+
+        # Normalize: all rows counting an aliment > 1 => bring back to 1 so that it's only zeroes and ones
+        features_flat_norm = features_flat.apply(self.__back_to_one).reset_index()
+
+        # Save the features
+        features_filename = '{folder}/features.csv'.format(folder=folder);
+
+        features_flat_norm.to_csv(features_filename)
+
+        logger.compute(context.correlation_id, '[ {context} ] - [ FEATURE ENGINEERING ] - Feature engineering completed. Features Shape: {r}'.format(context=context.process, r=features_flat_norm.shape), 'info')
+
+        # Return the file and the vectorizer
+        return features_filename
+
+
 
     def do_for_train(self, folder, raw_data_filename, context): 
         """
@@ -127,7 +182,7 @@ class FeatureEngineering:
         logger.compute(context.correlation_id, '[ {context} ] - [ FEATURE ENGINEERING ] - Starting feature engineering'.format(context=context.process), 'info')
 
         # Load the data
-        raw_data_df = pd.read_csv(raw_data_filename)
+        raw_data_df = pd.read_csv(raw_data_filename, index_col=0)
 
         logger.compute(context.correlation_id, '[ {context} ] - [ FEATURE ENGINEERING ] - Starting with a raw data shape of {s}'.format(context=context.process, s=raw_data_df.shape), 'info')
 

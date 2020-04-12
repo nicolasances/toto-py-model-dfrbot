@@ -7,7 +7,7 @@ from totoml.model import ModelType
 
 from model.train import Trainer
 from model.predict import Predictor
-#from model.score import Scorer
+from model.score import Scorer
 
 logger = TotoLogger()
 
@@ -32,8 +32,7 @@ class DFRBOT(ModelDelegate):
 
     def score(self, model, context):
 
-        pass
-        #return Scorer().score(model, context)        
+        return Scorer().score(model, context)        
 
     def train(self, model_info, context):
 

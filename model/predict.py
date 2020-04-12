@@ -21,7 +21,6 @@ class Predictor:
         """
         # Load relevant model files
         time_cluster_model = joblib.load(model.files['time-cluster-model'])
-        
         id_encoder = joblib.load(model.files['id-encoder'])
 
         # 1. Feature engineering
