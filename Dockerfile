@@ -8,6 +8,8 @@ RUN pip3 install sklearn
 RUN pip3 install gunicorn
 RUN pip3 install requests
 RUN pip3 install uuid
+RUN pip3 install google-cloud-pubsub
+RUN pip3 install google-cloud-storage
 RUN pip3 install toto-pubsub-nicolasances
 RUN pip3 install toto-logger-nicolasances
 RUN pip3 install totoml==2.2.2
