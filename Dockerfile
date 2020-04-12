@@ -8,6 +8,7 @@ RUN pip3 install sklearn
 RUN pip3 install gunicorn
 RUN pip3 install requests
 RUN pip3 install uuid
+RUN pip3 install toto-logger-nicolasances
 RUN pip3 install totoml==2.2.2
 
 COPY . /app/
