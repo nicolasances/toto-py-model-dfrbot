@@ -4,7 +4,7 @@ RUN pip3 install --upgrade pip
 RUN pip3 install flask
 RUN pip3 install joblib
 RUN pip3 install pandas
-RUN pip3 install sklearn
+RUN pip3 install sklearn==0.22.1
 RUN pip3 install gunicorn
 RUN pip3 install requests
 RUN pip3 install uuid
