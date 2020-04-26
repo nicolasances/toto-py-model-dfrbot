@@ -92,6 +92,24 @@ class FeatureEngineering:
                 new_row.append(x)
 
         return new_row
+    
+    def __dummizer(self, encoded_id, id_encoder):
+        """
+        This method creates the dummies when an encoder has already been defined
+        This is usefull to maintain the same dummy features after the training
+        Using a pd.get_dummies() wouldn't work after training (e.g. in the scoring process), because
+        the available data differs from the training data, so the aliments can be different and using the pd.get_dummies()
+        would end up having different features during scoring.
+
+        This method takes the original aliments and creates the dummy columns
+        """
+        id_cols = id_encoder.transform(id_encoder.classes_)
+
+        vals = [0 for x in range(len(id_cols))]
+
+        vals[encoded_id] = 1
+
+        return pd.Series(vals, index=id_cols)
 
     def do_for_predict(self, data, time_cluster_model, id_encoder, context): 
         """
@@ -151,7 +169,12 @@ class FeatureEngineering:
         scoring_data.drop(columns=['date'], inplace=True)
         
         # Create the dummy 
-        scoring_data = pd.concat([scoring_data, pd.get_dummies(scoring_data['encoded_id'])], axis=1)
+        # NOTE! When creating dummies, I don't use the ids available in the data, but the ones taken from the id_encoder.classes_
+        #       otherwise I risk having LESS columns and a mismatching shape with the training dataset!!!
+        #       (not MORE columns, because I made sure that only the aliments with an id that was used during training are selected)
+        id_dummies = scoring_data['encoded_id'].apply(self.__dummizer, args=[id_encoder])
+        
+        scoring_data = pd.concat([scoring_data, id_dummies], axis=1)
         scoring_data.drop(columns=['encoded_id'], inplace=True)
 
         # Group by time, staying home and cluster
